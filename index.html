@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Click Speed Test - Test your CPS and Aim</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary-color: #00e676; 
+            --bg-color: #121212; 
+            --nav-bg: #1e1e1e; 
+            --text-main: #ffffff;
+            --text-muted: #aaaaaa;
+            --modal-bg: rgba(0, 0, 0, 0.9);
+            --aim-target-color: #ff1744; /* Color rojo para los objetivos de puntería */
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            overflow-x: hidden; /* Previene scroll horizontal */
+        }
+
+        /* --- Menú de Navegación --- */
+        nav {
+            background-color: var(--nav-bg);
+            padding: 15px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            position: fixed;
+            top: 0; width: 100%; z-index: 100;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--primary-color);
+            cursor: pointer;
+        }
+
+        .menu {
+            list-style: none;
+            display: flex;
+            gap: 20px;
+        }
+
+        .menu li a {
+            color: var(--text-main);
+            text-decoration: none;
+            font-size: 16px;
+            font-weight: 500;
+            transition: color 0.3s ease;
+            cursor: pointer;
+        }
+
+        .menu li a:hover, .menu li a.active {
+            color: var(--primary-color);
+        }
+
+        /* --- Contenedor Principal (con margen superior para el menú fixed) --- */
+        .main-wrapper {
+            margin-top: 100px;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+            /* Control de visibilidad de las secciones */
+            display: none; 
+        }
+
+        .container.active-view {
+            display: block; /* Muestra solo la sección activa */
+        }
+
+        h1 {
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            margin-bottom: 30px;
+        }
+
+        /* Selector de Tiempos */
+        .time-selector {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .time-btn {
+            background-color: transparent;
+            color: var(--text-main);
+            border: 2px solid #333;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .time-btn:hover, .time-btn.active {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        /* Panel de Estadísticas Común */
+        .stats-panel {
+            display: flex;
+            justify-content: space-around;
+            background-color: var(--nav-bg);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+        }
+
+        .stat-box h3 {
+            font-size: 14px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-box span {
+            font-size: 32px;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        /* --- Estilos CPS TEST --- */
+        #click-area {
+            width: 100%;
+            height: 250px;
+            background-color: #2a2a2a;
+            border: 3px dashed #444;
+            border-radius: 15px;
+            font-size: 28px;
+            color: var(--text-main);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.1s;
+            user-select: none; 
+        }
+
+        #click-area:active {
+            transform: scale(0.98);
+            background-color: #333;
+            border-color: var(--primary-color);
+        }
+
+        /* --- Estilos AIM TRAINER --- */
+        #aim-area {
+            width: 100%;
+            height: 400px; /* Área más grande para mover el ratón */
+            background-color: #1e1e1e;
+            border: 2px solid #333;
+            border-radius: 15px;
+            position: relative; /* Necesario para posicionar los objetivos */
+            overflow: hidden;
+            cursor: crosshair; /* Cursor de cruz para apuntar */
+        }
+
+        /* El objetivo (círculo rojo) */
+        .aim-target {
+            width: 40px;
+            height: 40px;
+            background-color: var(--aim-target-color);
+            border-radius: 50%;
+            position: absolute;
+            box-shadow: 0 0 15px var(--aim-target-color);
+            transition: transform 0.1s ease-out; /* Pequeña animación al aparecer */
+            transform: scale(0);
+        }
+        
+        .aim-target.spawned {
+            transform: scale(1);
+        }
+
+        /* Pantalla de inicio del Aim Trainer */
+        #aim-start-screen {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            border-radius: 15px;
+        }
+
+        .start-btn {
+            background-color: var(--primary-color);
+            color: #000;
+            border: none;
+            padding: 15px 40px;
+            font-size: 20px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+
+        /* --- VENTANA MODAL (Resultados) --- */
+        #result-modal {
+            display: none; /* Oculto por defecto */
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: var(--modal-bg);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: var(--nav-bg);
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border: 1px solid #333;
+        }
+
+        .modal-content h2 {
+            font-size: 32px;
+            margin-bottom: 10px;
+            color: var(--primary-color);
+        }
+
+        .animal-rank {
+            font-size: 24px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        /* Contenedores específicos dentro del modal */
+        #cps-results-extra, #aim-results-extra {
+            display: none;
+        }
+
+        .chart-container {
+            width: 100%;
+            height: 200px;
+            margin: 20px 0;
+        }
+
+        .retry-btn {
+            background-color: var(--primary-color);
+            color: #000;
+            border: none;
+            padding: 12px 30px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            margin-top: 20px;
+        }
+
+        .retry-btn:hover {
+            transform: scale(1.05);
+        }
+
+    </style>
+</head>
+<body>
+
+    <nav>
+        <div class="logo">Click Speed Test</div>
+        <ul class="menu">
+            <li><a id="nav-cps" class="active" onclick="switchView('cps')">CPS Test</a></li>
+            <li><a id="nav-aim" onclick="switchView('aim')">Aim Trainer</a></li>
+        </ul>
+    </nav>
+
+    <div class="main-wrapper">
+
+        <div id="cps-container" class="container active-view">
+            <h1>Test your CPS</h1>
+            <p class="subtitle">Find out how many clicks per second you can do.</p>
+
+            <div class="time-selector" id="cps-time-selector">
+                <button class="time-btn" onclick="setCpsTime(1)">1 Second</button>
+                <button class="time-btn active" onclick="setCpsTime(5)">5 Seconds</button>
+                <button class="time-btn" onclick="setCpsTime(15)">15 Seconds</button>
+                <button class="time-btn" onclick="setCpsTime(60)">60 Seconds</button>
+            </div>
+
+            <div class="stats-panel">
+                <div class="stat-box">
+                    <h3>Timer</h3>
+                    <span id="cps-timer-display">5.0</span>s
+                </div>
+                <div class="stat-box">
+                    <h3>Score</h3>
+                    <span id="cps-score-display">0</span>
+                </div>
+                <div class="stat-box">
+                    <h3>CPS</h3>
+                    <span id="cps-display">0.00</span>
+                </div>
+            </div>
+
+            <div id="click-area">Click here to start playing</div>
+        </div>
+
+        <div id="aim-container" class="container">
+            <h1>Aim Trainer</h1>
+            <p class="subtitle">Click the targets as fast as you can. Don't miss!</p>
+
+            <div class="time-selector" id="aim-time-selector">
+                <button class="time-btn" onclick="setAimTime(10)">10 Seconds</button>
+                <button class="time-btn active" onclick="setAimTime(30)">30 Seconds</button>
+                <button class="time-btn" onclick="setAimTime(60)">60 Seconds</button>
+            </div>
+
+            <div class="stats-panel">
+                <div class="stat-box">
+                    <h3>Timer</h3>
+                    <span id="aim-timer-display">30.0</span>s
+                </div>
+                <div class="stat-box">
+                    <h3>Targets Hit</h3>
+                    <span id="aim-score-display">0</span>
+                </div>
+                <div class="stat-box">
+                    <h3>Misses</h3>
+                    <span id="aim-misses-display" style="color: #ff1744;">0</span>
+                </div>
+            </div>
+
+            <div id="aim-area">
+                <div id="aim-start-screen">
+                    <h2>Ready to Train?</h2>
+                    <button class="start-btn" onclick="startAimTrainer()">Start Game</button>
+                </div>
+                </div>
+        </div>
+
+    </div> <div id="result-modal">
+        <div class="modal-content">
+            <h2 id="modal-title">Time's Up!</h2>
+            <div class="animal-rank" id="animal-rank-text">Rank: Turtle 🐢</div>
+            <p id="modal-summary-text">Your average speed was ...</p>
+            
+            <div id="cps-results-extra">
+                <div class="chart-container">
+                    <canvas id="cpsChart"></canvas>
+                </div>
+            </div>
+
+            <div id="aim-results-extra">
+                <p>Accuracy: <strong id="aim-accuracy-text">0%</strong></p>
+            </div>
+
+            <button class="retry-btn" onclick="closeModal()">Try Again</button>
+        </div>
+    </div>
+
+    <script>
+        // --- VARIABLES GLOBALES Y ESTADO ---
+        let currentMode = 'cps'; // Puede ser 'cps' o 'aim'
+
+        // Variables CPS
+        let cpsClicks = 0;
+        let cpsSelectedTime = 5;
+        let cpsTimeLeft = 5;
+        let cpsTimerInterval;
+        let cpsIsPlaying = false;
+        // Gráfica CPS
+        let clicksThisSecond = 0;
+        let currentSecondTracker = 1;
+        let chartData = [];
+        let chartLabels = [];
+        let myChart = null;
+
+        // Variables Aim Trainer
+        let aimHits = 0;
+        let aimMisses = 0;
+        let aimSelectedTime = 30;
+        let aimTimeLeft = 30;
+        let aimTimerInterval;
+        let aimIsPlaying = false;
+        let currentTarget = null; // Guarda la referencia al div del objetivo actual
+
+        // Elementos DOM
+        const modal = document.getElementById('result-modal');
+        const clickArea = document.getElementById('click-area');
+        const aimArea = document.getElementById('aim-area');
+        const aimStartScreen = document.getElementById('aim-start-screen');
+
+        // --- LÓGICA DE NAVEGACIÓN (Cambio de Pestañas) ---
+        function switchView(mode) {
+            // No permitir cambiar de pestaña si hay un juego en curso
+            if (cpsIsPlaying || aimIsPlaying) {
+                alert("Please finish the current game first.");
+                return;
+            }
+
+            currentMode = mode;
+
+            // Actualizar menú
+            document.querySelectorAll('.menu li a').forEach(el => el.classList.remove('active'));
+            document.getElementById(`nav-${mode}`).classList.add('active');
+
+            // Actualizar contenedores visibles
+            document.querySelectorAll('.container').forEach(el => el.classList.remove('active-view'));
+            document.getElementById(`${mode}-container`).classList.add('active-view');
+
+            resetAllGames();
+        }
+
+        function resetAllGames() {
+            resetCpsGame();
+            resetAimGame();
+        }
+
+        // =========================================================================
+        // --- LÓGICA DEL CPS TEST (Ya existente, adaptada) ---
+        // =========================================================================
+        function setCpsTime(seconds) {
+            if (cpsIsPlaying) return; 
+            cpsSelectedTime = seconds;
+            resetCpsGame();
+            // Actualizar botones
+            document.querySelectorAll('#cps-time-selector .time-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+
+        clickArea.addEventListener('mousedown', () => {
+            if (currentMode !== 'cps' || cpsTimeLeft <= 0 || (cpsIsPlaying && cpsTimeLeft <= 0.01)) return;
+
+            cpsClicks++;
+            clicksThisSecond++;
+            document.getElementById('cps-score-display').innerText = cpsClicks;
+
+            if (!cpsIsPlaying) {
+                cpsIsPlaying = true;
+                clickArea.innerText = "Keep clicking!";
+                
+                chartData = []; chartLabels = [];
+                clicksThisSecond = 1; currentSecondTracker = 1;
+                
+                cpsTimerInterval = setInterval(() => {
+                    cpsTimeLeft -= 0.1;
+                    document.getElementById('cps-timer-display').innerText = Math.abs(cpsTimeLeft).toFixed(1);
+
+                    let timeElapsed = cpsSelectedTime - cpsTimeLeft;
+                    
+                    if (timeElapsed > 0) {
+                        document.getElementById('cps-display').innerText = (cpsClicks / timeElapsed).toFixed(2);
+                    }
+
+                    // Datos gráfica
+                    if (timeElapsed >= currentSecondTracker && currentSecondTracker <= cpsSelectedTime) {
+                        chartData.push(clicksThisSecond);
+                        chartLabels.push(currentSecondTracker + "s");
+                        clicksThisSecond = 0; currentSecondTracker++;
+                    }
+
+                    if (cpsTimeLeft <= 0.01) {
+                        clearInterval(cpsTimerInterval);
+                        cpsTimeLeft = 0;
+                        document.getElementById('cps-timer-display').innerText = "0.0";
+                        cpsIsPlaying = false;
+                        
+                        // Ajuste final gráfica
+                        if (chartData.length < cpsSelectedTime) {
+                            chartData.push(clicksThisSecond); chartLabels.push(cpsSelectedTime + "s");
+                        }
+                        showCpsResults();
+                    }
+                }, 100);
+            }
+        });
+
+        function resetCpsGame() {
+            clearInterval(cpsTimerInterval);
+            cpsClicks = 0;
+            cpsTimeLeft = cpsSelectedTime;
+            cpsIsPlaying = false;
+            document.getElementById('cps-score-display').innerText = "0";
+            document.getElementById('cps-display').innerText = "0.00";
+            document.getElementById('cps-timer-display').innerText = cpsTimeLeft.toFixed(1);
+            clickArea.innerText = "Click here to start playing";
+        }
+
+        // =========================================================================
+        // --- LÓGICA DEL AIM TRAINER (NUEVO) ---
+        // =========================================================================
+        function setAimTime(seconds) {
+            if (aimIsPlaying) return;
+            aimSelectedTime = seconds;
+            resetAimGame();
+            document.querySelectorAll('#aim-time-selector .time-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+
+        function startAimTrainer() {
+            resetAimGame();
+            aimIsPlaying = true;
+            aimStartScreen.style.display = 'none';
+            spawnTarget();
+
+            aimTimerInterval = setInterval(() => {
+                aimTimeLeft -= 0.1;
+                document.getElementById('aim-timer-display').innerText = Math.abs(aimTimeLeft).toFixed(1);
+
+                if (aimTimeLeft <= 0.01) {
+                    endAimGame();
+                }
+            }, 100);
+        }
+
+        // Detectar clics fallidos en el área de juego
+        aimArea.addEventListener('mousedown', (e) => {
+            if (!aimIsPlaying) return;
+
+            // Si el clic NO fue en el objetivo (target), es un fallo
+            if (e.target !== currentTarget) {
+                aimMisses++;
+                document.getElementById('aim-misses-display').innerText = aimMisses;
+                // Efecto visual rápido de fallo (borde rojo temporal)
+                aimArea.style.borderColor = '#ff1744';
+                setTimeout(() => aimArea.style.borderColor = '#333', 100);
+            }
+        });
+
+        function spawnTarget() {
+            if (!aimIsPlaying) return;
+
+            // Eliminar target anterior si existe
+            if (currentTarget) {
+                currentTarget.remove();
+            }
+
+            // Crear nuevo elemento target
+            currentTarget = document.createElement('div');
+            currentTarget.className = 'aim-target';
+
+            // Calcular posición aleatoria dentro de aimArea
+            const areaWidth = aimArea.offsetWidth;
+            const areaHeight = aimArea.offsetHeight;
+            const targetSize = 40; // Debe coincidir con el CSS
+
+            // Dejar un margen de 10px para que no pegue al borde
+            const maxX = areaWidth - targetSize - 20;
+            const maxY = areaHeight - targetSize - 20;
+
+            const randomX = Math.floor(Math.random() * maxX) + 10;
+            const randomY = Math.floor(Math.random() * maxY) + 10;
+
+            currentTarget.style.left = `${randomX}px`;
+            currentTarget.style.top = `${randomY}px`;
+
+            // Lógica al hacer clic EN EL OBJETIVO
+            currentTarget.addEventListener('mousedown', (e) => {
+                e.stopPropagation(); // Previene que el clic llegue al aimArea (conteo de fallos)
+                if (!aimIsPlaying) return;
+
+                aimHits++;
+                document.getElementById('aim-score-display').innerText = aimHits;
+                spawnTarget(); // Aparece uno nuevo inmediatamente
+            });
+
+            aimArea.appendChild(currentTarget);
+            
+            // Pequeño delay para activar la animación CSS de aparición
+            setTimeout(() => {
+                if(currentTarget) currentTarget.classList.add('spawned');
+            }, 10);
+        }
+
+        function endAimGame() {
+            clearInterval(aimTimerInterval);
+            aimTimeLeft = 0;
+            document.getElementById('aim-timer-display').innerText = "0.0";
+            aimIsPlaying = false;
+            
+            if (currentTarget) currentTarget.remove();
+            currentTarget = null;
+
+            showAimResults();
+        }
+
+        function resetAimGame() {
+            clearInterval(aimTimerInterval);
+            aimHits = 0;
+            aimMisses = 0;
+            aimTimeLeft = aimSelectedTime;
+            aimIsPlaying = false;
+            document.getElementById('aim-score-display').innerText = "0";
+            document.getElementById('aim-misses-display').innerText = "0";
+            document.getElementById('aim-timer-display').innerText = aimTimeLeft.toFixed(1);
+            if (currentTarget) currentTarget.remove();
+            currentTarget = null;
+            aimStartScreen.style.display = 'flex';
+        }
+
+        // =========================================================================
+        // --- MODAL DE RESULTADOS Y RANGOS (Compartido) ---
+        // =========================================================================
+        
+        function showCpsResults() {
+            // Configurar modal para CPS
+            document.getElementById('modal-title').innerText = "CPS Test Complete!";
+            document.getElementById('cps-results-extra').style.display = 'block';
+            document.getElementById('aim-results-extra').style.display = 'none';
+
+            let finalCPS = (cpsClicks / cpsSelectedTime).toFixed(2);
+            document.getElementById('modal-summary-text').innerHTML = `Your average speed was <strong>${finalCPS}</strong> Clicks Per Second.`;
+            
+            // Rangos CPS
+            let animalText = "";
+            if (finalCPS < 5) animalText = "🐢 Sluggish Turtle";
+            else if (finalCPS < 8) animalText = "🐁 Quick Mouse";
+            else if (finalCPS < 11) animalText = "🐇 Agile Rabbit";
+            else if (finalCPS < 14) animalText = "🦅 Swift Falcon";
+            else animalText = "🐆 Speeding Cheetah";
+            
+            document.getElementById('animal-rank-text').innerText = `Rank: ${animalText}`;
+
+            renderCpsChart();
+            modal.style.display = 'flex';
+        }
+
+        function showAimResults() {
+            // Configurar modal para Aim
+            document.getElementById('modal-title').innerText = "Aim Training Complete!";
+            document.getElementById('cps-results-extra').style.display = 'none';
+            document.getElementById('aim-results-extra').style.display = 'block';
+
+            let totalClicks = aimHits + aimMisses;
+            let accuracy = totalClicks === 0 ? 0 : ((aimHits / totalClicks) * 100).toFixed(1);
+            // Objetivos por segundo
+            let targetsPerSecond = (aimHits / aimSelectedTime).toFixed(2);
+
+            document.getElementById('modal-summary-text').innerHTML = `You hit <strong>${aimHits}</strong> targets in ${aimSelectedTime} seconds.<br>(${targetsPerSecond} Targets/s)`;
+            document.getElementById('aim-accuracy-text').innerText = `${accuracy}%`;
+
+            // Rangos Aim (basados en Targets por segundo y precisión)
+            let animalText = "";
+            if (accuracy < 60 || targetsPerSecond < 1) animalText = "🐌 Drunken Snail";
+            else if (targetsPerSecond < 1.5) animalText = "🐱 Distracted Cat";
+            else if (targetsPerSecond < 2.2) animalText = "🐕 Trained Dog";
+            else if (targetsPerSecond < 3) animalText = "🦅 Sharp Eagle";
+            else animalText = "🎯 Elite Sniper";
+
+            document.getElementById('animal-rank-text').innerText = `Rank: ${animalText}`;
+            modal.style.display = 'flex';
+        }
+
+        function renderCpsChart() {
+            const ctx = document.getElementById('cpsChart').getContext('2d');
+            if (myChart != null) myChart.destroy();
+
+            myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: chartLabels,
+                    datasets: [{
+                        label: 'Clicks/s',
+                        data: chartData,
+                        borderColor: '#00e676',
+                        backgroundColor: 'rgba(0, 230, 118, 0.1)',
+                        borderWidth: 2,
+                        pointBackgroundColor: '#ffffff',
+                        tension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: '#333' }, ticks: { color: '#aaa' } },
+                        x: { grid: { color: '#333' }, ticks: { color: '#aaa' } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        function closeModal() {
+            modal.style.display = 'none';
+            resetAllGames();
+        }
+    </script>
+</body>
+</html>
